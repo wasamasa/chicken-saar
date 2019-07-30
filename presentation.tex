@@ -1,0 +1,376 @@
+% Created 2019-04-06 Sat 17:31
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{tabu}
+\usepackage{minted}
+\usepackage[english]{babel}
+\hypersetup{pdfauthor="Vasilij Schneidermann", pdftitle="State of Retro Gaming in Emacs", colorlinks, linkcolor=, urlcolor=blue}
+\setminted{fontsize=\footnotesize,escapeinside=||}
+\usetheme{Rochester}
+\usecolortheme[RGB={87,83,170}]{structure}
+\author{Vasilij Schneidermann}
+\date{April 2019}
+\title{State of Retro Gaming in Emacs}
+\hypersetup{
+ pdfauthor={Vasilij Schneidermann},
+ pdftitle={State of Retro Gaming in Emacs},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.1 (Org mode 9.1.9)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\AtBeginSection{\frame{\sectionpage}}
+
+\section{Intro}
+\label{sec:org95c154a}
+
+\begin{frame}[label={sec:orgaeac524}]{About}
+\begin{itemize}
+\item Vasilij Schneidermann, 26
+\item Software developer at bevuta IT, Cologne
+\item mail@vasilij.de
+\item \url{https://github.com/wasamasa}
+\item \url{http://emacshorrors.com/}
+\item \url{http://emacsninja.com/}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgd02fa68}]{Motivation}
+\begin{itemize}
+\item Emacs is the ultimate procrastination machine
+\item Many fun demonstrations:
+\begin{itemize}
+\item Order salad online
+\item Window manager
+\item IRC bot
+\item Textual web browser
+\item Basic games
+\item 3D maze
+\item Z-Machine emulator
+\item Audio/video editor
+\item Sex toy controller
+\end{itemize}
+\item Can we emulate retro games at 60 FPS?
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org83df2d0}]{Context}
+\begin{itemize}
+\item Prior art at FrOSCon/Quasiconf: Audiovisual demonstrations
+\item NES emulators are supposed to be simple
+\item Random Japanese guy beat me to the punch
+\item Recommended emulation project: CHIP-8
+\item Alternative: Intel 8080 running Space Invaders or CP/M
+\item Then someone else released a GB emulator\ldots{}
+\end{itemize}
+\end{frame}
+
+\section{Interactive demonstrations}
+\label{sec:org3894488}
+
+\begin{frame}[label={sec:org57a0a33}]{NES}
+\begin{itemize}
+\item \url{https://github.com/gongo/emacs-nes}
+\item Super slow (100x), doesn't go beyond initial game screen
+\item Most time spent in rendering
+\item Could maybe be made to work at acceptable speed with lots of
+frameskip?
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgdd660d9}]{GB}
+\begin{itemize}
+\item \url{https://github.com/vreeze/eboy}
+\item WIP, released in a hurry after I released mine
+\item Almost playable thanks to lots of frameskip
+\item Only Tetris works
+\item The most popular
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgec8c7ef}]{CHIP-8}
+\begin{itemize}
+\item \url{https://github.com/wasamasa/chip8.el}
+\item Pretty much finished, <1000SLOC
+\item Supports Super CHIP-8 extensions
+\item Runs at full speed, games behave OK
+\end{itemize}
+\end{frame}
+
+\section{Fun facts about \texttt{chip8.el}}
+\label{sec:orgb7bf18e}
+
+\begin{frame}[label={sec:org19e92bd}]{What the hell is a CHIP-8 anyway?}
+\begin{itemize}
+\item It's a VM, not a console
+\item Designed for easy porting of home computer games
+\item Not terribly successful
+\item Small community of enthusiasts writing games for it
+\item There are even a few demos!
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgf2c8914}]{System specs}
+\begin{itemize}
+\item CPU: 8-Bit, 16 general-purpose registers, 36 instructions, each two
+bytes large
+\item RAM: 4KB
+\item Stack: 16 return addresses
+\item Resolution: 64 x 32 black/white pixels
+\item Rendering: Sprites are drawn in XOR mode
+\item Sound: Monotone buzzer
+\item Input: Hexadecimal keypad
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org0bcc3e8}]{Goals}
+\begin{itemize}
+\item Coming up with a name
+\item Obtaining a ROM pack
+\item Understanding the system
+\item Basic RE tools
+\item Rendering
+\item Beeps
+\item Make as many games run as possible
+\item No debugger
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:org1d404e3}]{How does it work?}
+ \begin{itemize}
+\item Runs at an unspecified speed
+\item Sound and delay timer count down at 60FPS
+\item Game is loaded up at \texttt{\#x200} into RAM
+\item Program counter is set to \texttt{\#x200}
+\item Decode instruction, execute, loop
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org30dd25d}]{Game loop woes}
+\begin{itemize}
+\item Game approach: Do stuff, wait, repeat
+\item Doesn't work terribly well in Emacs due to user input
+\item Interruptible sleep: Unpredictable
+\item Un-interruptable sleep: Freezes
+\item Timers: Inversion of control, allows user input to happen
+\item Call a timer function at 60FPS, don't do too much in it:
+\begin{itemize}
+\item Execute CPU cycle(s)
+\item Decrement sound/delay registers
+\item Repaint
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgc5fea0b}]{Mapping the system to Emacs Lisp}
+\begin{itemize}
+\item It's all integers and vectors (of integers)
+\item RAM, registers, return stack, key state, screen, etc.
+\item Stored in global variables
+\item No lists are used at all
+\item Side effect: No consing happens, no GC pauses
+\item Registers are mapped to a vector with an enum macro
+\item Side effect: Much easier decoding
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgac95272}]{Built-in sprites}
+\begin{itemize}
+\item Unspecified
+\item Everyone steals them from the canonical implementation
+\item Super CHIP-8 has bigger sprites
+\item I upscaled the small ones using a terrible Ruby oneliner
+\item Lesson here: Sometimes it's not worth being clever
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:org467ca91}]{Decoding instructions}
+ \begin{itemize}
+\item All instructions are two bytes
+\item Arguments are encoded inside them
+\item \texttt{JP nnn} for example maps to \texttt{\#x1nnn}
+\item Type extracted by masking with \texttt{\#xF000}, then shifting by 12 bits
+\item Argument by masking with \texttt{\#x0FFF} (no shift needed)
+\item Common patterns emerge, like addresses being the last three nibbles
+\item Big \texttt{cond} dispatching on the type and executing side effects
+\item Common side effect: Bumping program counter by two
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgf0cb306}]{Interactive Testing}
+\begin{itemize}
+\item Initially: Execute ROM until user interrupt
+\item Use a debug command to render screen to a buffer
+\item Maze: Small ROM, few instructions
+\item There are many more ROMs that just display a static screen
+\item I went through them all and added instructions as needed
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgad9ca80}]{Debugging}
+\begin{itemize}
+\item My usual approach of using edebug was ineffective
+\item Therefore: Logging it is
+\item I compared my log output with an instrumented version of evhan's
+chick-8 emulator
+\item If the logs diverge, that's where the bug lies
+\item Future project idea: A CHIP-8 debugger, game development environment
+\item Inspirations:
+\begin{itemize}
+\item \url{https://massung.github.io/CHIP-8/}
+\item \url{http://johnearnest.github.io/Octo/}
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgcb068dc}]{Analysis}
+\begin{itemize}
+\item Writing a disassembler is simple, but tedious
+\item Adding analysis functionality is particularly tricky
+\item Idea: Reuse radare2 framework, add analysis/disasm plugin
+\item I wrote one in Python, then discovered there is one in core\ldots{}
+\item I then improved that one to the same level
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:org5f540a0}]{Unit testing}
+ \begin{itemize}
+\item Goal: Coverage of all instructions and what they do
+\item More of a safety net, doesn't catch everything
+\item Built-in ERT library isn't terribly good
+\item \url{https://github.com/jorgenschaefer/emacs-buttercup} is better
+\item Each test initializes the VM, loads up code, executes the
+\texttt{chip8-cycle} function, checks for side effects
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org7ccc69e}]{Rendering}
+\begin{itemize}
+\item By far the trickiest part
+\item I intentionally decided against using a library
+\item Creating SVGs: Too expensive
+\item Creating/mutating strings: Too expensive or complicated
+\item Changing SVG tiles: Gaps between lines
+\item Bool vector backed XPM: Caching effects ruin everything
+\item Plain text with background color: Perfect
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org2f0cc04}]{Rendering optimization}
+\begin{itemize}
+\item Initially: Clear buffer, insert text
+\item Better: Move across text, delete and insert changed parts
+\item Optimization: Track dirty frame
+\item Changed parts: Diff two framebuffers
+\item Final optimization: Erasing text was slow, changing background text
+property was way faster
+\item Future optimization: Make a C module with a fast canvas
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:org5a25466}]{Garbage collection}
+ \begin{itemize}
+\item Occasionally there was a small stutter
+\item This turned out to be code duplicating vectors
+\item Solution: Writing a \texttt{memcpy}-style function
+\item Delays after every few tests
+\item Solution: Using a \texttt{memset}-like function instead of recreating
+vectors
+\item Hard to profile and spot, may require a custom package
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:orgb599a7a}]{Sound}
+ \begin{itemize}
+\item You only need a beep, so no difficulties emulating it
+\item Playing it is hard because Emacs only supports synchronous
+playback\ldots{}
+\item Emacs processes are asynchronous, so controlling one works
+\item \texttt{mplayer} has a slave mode, \texttt{mpv} supports listening on a FIFO for commands
+\item Proof of concept:
+\begin{itemize}
+\item Start paused \texttt{mpv} with a FIFO in loop mode
+\item Send pause/unpause command to the FIFO
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org5cda192}]{User input (non-blocking)}
+\begin{itemize}
+\item Checking for key press state: Unsupported
+\item Solution: Global key handler stores key press timestamp
+\item Compare the timestamp with current time against timeout
+\item Key considered pressed if less than timeout
+\item Requires tweaking to feel "natural"
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org17f6fd4}]{User input (blocking)}
+\begin{itemize}
+\item Tricky due to inversion of control
+\item Required me to do a state machine rewrite
+\item The command transfers the emulator into a waiting state
+\item The global key handler checks for that state and transfers to the
+playing state
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org40c51e0}]{Super CHIP-8}
+\begin{itemize}
+\item Supports more interesting games
+\item Proper scrolling support requires tricks to do in-place
+\item Doubled resolution required an extra rendering optimization
+\item It's possible to switch between both modes, making it tricky to
+implement:
+\begin{itemize}
+\item You could always work in high-res and downscale if needed
+\item Alternatively: Switch between low-res and high-res screen to
+render to
+\item I went for the latter
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orga1710c3}]{Other stuff}
+\begin{itemize}
+\item Sometimes games deviate from the reference, conflicting with it
+\item Sometimes it's unclear whether it's worth it to support an obscure
+feature
+\item I'm not good at games and didn't enjoy playing them
+\item However: You gain great insight how the machine works
+\end{itemize}
+\end{frame}
+
+\section{Outro}
+\label{sec:org734f4e8}
+
+\begin{frame}[label={sec:org9dc929e}]{What next?}
+\begin{itemize}
+\item Maybe an Intel 8080 emulator running CP/M
+\item Maybe experimentation with faster rendering
+\item More serious stuff in CHICKEN, like NES or GB emulator
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org112ed00}]{Questions?}
+\end{frame}
+\end{document}

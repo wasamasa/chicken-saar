@@ -1,0 +1,3 @@
+* About
+
+Breaking news on the state of retrogaming in Emacs
