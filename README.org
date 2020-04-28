@@ -1,3 +1,1 @@
-* About
-
-Breaking news on the state of retrogaming in Emacs
+Moved to https://depp.brause.cc/talks/
